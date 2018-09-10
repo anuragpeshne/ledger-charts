@@ -16,7 +16,7 @@ def process_bal(input):
 ...            $0.20      A2B1C5
 ...            $0.10      A2B1C6
 ...        INR 100.00    A2B2'''
->>> output = process_bal(test_input.strip().split('\\n'))
+>>> output = process_bal(test_input)
 >>> len(output[1]['amounts'])
 2
 >>> len(output[1]['children'][0]['children'])
@@ -25,9 +25,10 @@ def process_bal(input):
 ...        $10.00  A1
 ...         $5.00    A1B1
 ...         $5.00    A1B2'''
->>> process_bal(test_input.strip().split('\\n'))
+>>> process_bal(test_input)
 [{'amounts': [{'currency': '$', 'amount': 10.0}], 'account': 'A1', 'children': [{'amounts': [{'currency': '$', 'amount': 5.0}], 'account': 'A1B1', 'children': []}, {'amounts': [{'currency': '$', 'amount': 5.0}], 'account': 'A1B2', 'children': []}]}]
 """
+    input = input.strip().split('\n')
     parsed_tree = [] # parsed_tree: [{'amounts':[], 'account': '', 'children: [parsed_tree]}]
     parent_stack = []
     parent_stack.append(parsed_tree)
