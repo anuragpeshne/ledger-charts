@@ -23,7 +23,6 @@ def month_bal():
                                                       ledgerfile, "balance",
                                                       "-b", month_first])
     this_month_expense_processed = process_bal(this_month_expense_raw.decode("utf-8"))
-    print(this_month_expense_processed)
     return json.dumps(this_month_expense_processed, indent=4)
 
 

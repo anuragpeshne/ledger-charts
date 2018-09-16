@@ -1,0 +1,9 @@
+body {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.pieContainer {
+    max-width: 600px;
+    margin: 0 auto;
+}
