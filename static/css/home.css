@@ -3,7 +3,26 @@ body {
     margin: 0 auto;
 }
 
-.pieContainer {
+.pie-container {
     max-width: 600px;
     margin: 0 auto;
+}
+
+.input-container {
+    padding: 20px;
+}
+
+.pie-container #pie-depth {
+    width: 25px;
+    border: none;
+}
+
+.pie-container #pie-command {
+    border: none;
+    width: 400px;
+}
+
+.command {
+    font-family: "Consolas", "Monaco";
+    font-size: 16px;
 }

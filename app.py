@@ -15,15 +15,14 @@ ledgerfile = None
 def index():
     return render_template('index.html')
 
-@app.route("/monthly-bal")
+@app.route("/balance")
 def month_bal():
-    today = datetime.today()
-    month_first = datetime(today.year, today.month, 1).strftime("%Y/%m/%d")
-    this_month_expense_raw = subprocess.check_output(["ledger", "-f",
-                                                      ledgerfile, "balance",
-                                                      "-b", month_first])
-    this_month_expense_processed = process_bal(this_month_expense_raw.decode("utf-8"))
-    return json.dumps(this_month_expense_processed, indent=4)
+    input_param = request.args.get('param')
+    expense_raw = subprocess.check_output(["ledger", "-f",
+                                           ledgerfile, "balance"] +
+                                          input_param.split(' '))
+    expense_processed = process_bal(expense_raw.decode("utf-8"))
+    return json.dumps(expense_processed, indent=4)
 
 
 if __name__ == "__main__":

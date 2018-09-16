@@ -13,10 +13,16 @@
   <title>Ledger-cli GUI</title>
 </head>
 <body>
-  <h1>Hello, World!</h1>
-  <div class="pieContainer">
-      <input type="number" id="monthly-bal-depth" value="1" name="pieDepth"/>
-      <canvas id="monthly-bal" width="400px" height="400px">
+    <div class="pie-container">
+        <div class="input-container">
+            <div>
+                <span class="command">ledger balance <input type="text" class="command pie-input" id="pie-command" /></span>
+            </div>
+            <div>
+                <span>Depth: <input type="number" class="command pie-input" id="pie-depth" value="2"/></span>
+            </div>
+        </div>
+      <canvas id="pie-canvas" width="400px" height="400px">
   </div>
   </canvas>
 </body>
