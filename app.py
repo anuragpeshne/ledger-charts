@@ -16,14 +16,22 @@ def index():
     return render_template('index.html')
 
 @app.route("/balance")
-def month_bal():
-    input_param = request.args.get('param')
+def balance():
+    input_param = request.args.get('param').strip()
     expense_raw = subprocess.check_output(["ledger", "-f",
                                            ledgerfile, "balance"] +
                                           input_param.split(' '))
     expense_processed = process_bal(expense_raw.decode("utf-8"))
     return json.dumps(expense_processed, indent=4)
 
+@app.route("/register")
+def register():
+    input_param = request.args.get('param').strip()
+    expense_raw = subprocess.check_output(["ledger", "-f",
+                                           ledgerfile, "register"] +
+                                          input_param.split(' '))
+    expense_processed = process_reg(expense_raw.decode("utf-8"))
+    return json.dumps(expense_processed, indent=4)
 
 if __name__ == "__main__":
     ledgerfile = sys.argv[1]

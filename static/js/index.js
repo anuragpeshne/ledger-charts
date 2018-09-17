@@ -96,7 +96,7 @@ function plotPie(data, depth) {
                     var label = pieChart.data.labels[clickedPoint._index];
                     var value = pieChart.data.datasets[clickedPoint._datasetIndex].data[clickedPoint._index];
                     var account = label.substring(1).replace('/',':');
-                    var newCommand = $('#pie-command').val() + ' ' + account;
+                    var newCommand = $('#pie-command').val().trim() + ' ' + account;
                     $('#pie-command').val(newCommand);
                     refreshPie();
                 }
