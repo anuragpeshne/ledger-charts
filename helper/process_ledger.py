@@ -16,12 +16,16 @@ def process_bal(input):
 ...            $0.30      A2B1C4
 ...            $0.20      A2B1C5
 ...            $0.10      A2B1C6
-...        INR 100.00    A2B2'''
+...        INR 100.00    A2B2
+...            $10.00      A2B2C1
+...          -$100.00  A3'''
 >>> output = process_bal(test_input)
 >>> len(output[1]['amounts'])
 2
 >>> len(output[1]['children'][0]['children'])
 6
+>>> len(output)
+3
 >>> test_input = '''
 ...        $10.00  A1
 ...         $5.00    A1B1
@@ -46,7 +50,9 @@ def process_bal(input):
             if parsed_account['level'] == len(parent_stack):
                 pass
             elif parsed_account['level'] < len(parent_stack):
-                parent_stack.pop()
+                level_diff = int(len(parent_stack) - parsed_account['level'])
+                for i in range(level_diff):
+                    parent_stack.pop()
             elif parsed_account['level'] > len(parent_stack):
                 parent_stack.append(parent_stack[-1][-1]['children'])
 
