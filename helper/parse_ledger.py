@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 
-def process_bal(input):
+def parse_balance(input):
     """Return parsed ledger input
 >>> test_input = '''
 ...          $ -10.00  A1
@@ -19,7 +19,7 @@ def process_bal(input):
 ...        INR 100.00    A2B2
 ...            $10.00      A2B2C1
 ...          -$100.00  A3'''
->>> output = process_bal(test_input)
+>>> output = parse_balance(test_input)
 >>> len(output[1]['amounts'])
 2
 >>> len(output[1]['children'][0]['children'])
@@ -30,7 +30,7 @@ def process_bal(input):
 ...        $10.00  A1
 ...         $5.00    A1B1
 ...         $5.00    A1B2'''
->>> process_bal(test_input)
+>>> parse_balance(test_input)
 [{'amounts': [{'currency': '$', 'amount': 10.0}], 'account': 'A1', 'children': [{'amounts': [{'currency': '$', 'amount': 5.0}], 'account': 'A1B1', 'children': []}, {'amounts': [{'currency': '$', 'amount': 5.0}], 'account': 'A1B2', 'children': []}]}]
 """
     input = input.strip().split('\n')
@@ -106,47 +106,74 @@ def parse_amount(line):
         return {"currency": "", "amount": 0.00}
 
 splitre = re.compile('  +') # split based on at least 2 spaces
-def process_reg(input):
+def parse_register(input):
+    """Parses the output of command `ledger register` and returns json
+>>> test_input = '''
+... 20-Jan-01 Payee1  A1:B2:C1     $10.00     $10.00
+...                   A1:B2:C2  INR 10.00     $10.00
+...                                        INR 10.00
+...                   A1:B2:C3     $10.00     $20.00
+...                                        INR 10.00
+...                   A1:B3        $02.00     $32.00
+...                                        INR 10.00'''
+>>> parse_register(test_input)
+[{'duration': {'payee': 'Payee1', 'from': datetime.datetime(2020, 1, 1, 0, 0)}, 'accounts': [{'account': 'A1:B2:C3', 'current': {'$':10}, 'running':{'$': 10}}, {'account': 'A1:B2:C4', 'current': {'$': 10}, 'running':{'$':20}}, {'account':'A1:B3', current:{'$':2.0}, 'running':{'$': 32.0}}]}]"""
     # returns duration accounts tree list
-    # ['<duration>': [
-    #    '<account>': {
-    #      'current': { '<unit>': 'value' },
-    #      'running': { '<unit>': 'value' },
-    #      'children': [accounts-tree]
-    #    }
-    #  ]
-    # ]
-    duration_accounts_tree_list = []
+    # [{
+    #     'duration' : '<duration>',
+    #     'accounts' : [{
+    #       'account': '<account>',
+    #       'current': { '<unit>': 'value' },
+    #       'running': { '<unit>': 'value' }
+    #     }]
+    # }]
+    input = input.strip().split('\n')
+    parsed_list = []
     last_account = None
     for line in input:
         line = line.strip()  # helps when fields are empty
         fields = splitre.split(line)
         if len(fields) == 1:
+            last_account = parsed_list[-1]['accounts'][-1]
             # extra amount row in cumulative sum column
             running = parse_amount(fields[0])
-            add_currency(last_account['running'], running)
+            result_running = add_currency(last_account['running'], running)
+            parsed_list[-1]['accounts'][-1]['running'] = result_running
         elif len(fields) == 2:
+            last_account = parsed_list[-1]['accounts'][-1]
             # extra amount row
             current = parse_amount(fields[0])
             running = parse_amount(fields[1])
-            add_currency(last_account['current'], current)
-            add_currency(last_account['running'], running)
+            result_current = add_currency(last_account['current'], current)
+            result_running = add_currency(last_account['running'], running)
+            parsed_list[-1]['accounts'][-1]['current'] = result_current
+            parsed_list[-1]['accounts'][-1]['running'] = result_running
         elif len(fields) == 3:
-            accounts = fields[0].split(':')
+            account = fields[0]
             current = parse_amount(fields[1])
             running = parse_amount(fields[2])
-            add_currency(last_account['current'], current)
-            add_currency(last_account['running'], running)
+            parsed_list[-1]['accounts'].append({
+                'account' : account,
+                'current' : current,
+                'running' : running})
         elif len(fields) == 4:
             duration = parse_duration(fields[0])
-            accounts = fields[1].split(':')
+            account = fields[1]
             current = parse_amount(fields[2])
             running = parse_amount(fields[3])
-            add_currency(last_account['current'], current)
-            add_currency(last_account['running'], running)
+            parsed_list.append({
+                'duration' : duration,
+                'accounts' : [{
+                    'account' : account,
+                    'current' : current,
+                    'running' : running
+                }]
+            })
         else:
             raise("more than 4 fields parsed during processing registry")
+    return parsed_list
 
+# TODO: fix this
 def add_currency(store, input):
     """adds to existing currency or creates new
 >>> add_currency({'$': 100}, {'currency': '$', 'amount': 10})

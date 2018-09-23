@@ -6,7 +6,8 @@ from flask import render_template
 from flask import request
 import json
 
-from helper.process_ledger import process_bal
+from helper.parse_ledger import parse_balance
+from helper.parse_ledger import parse_register
 
 app = Flask(__name__, static_url_path='/static')
 ledgerfile = None
@@ -21,7 +22,7 @@ def balance():
     expense_raw = subprocess.check_output(["ledger", "-f",
                                            ledgerfile, "balance"] +
                                           input_param.split(' '))
-    expense_processed = process_bal(expense_raw.decode("utf-8"))
+    expense_processed = parse_balance(expense_raw.decode("utf-8"))
     return json.dumps(expense_processed, indent=4)
 
 @app.route("/register")
@@ -30,7 +31,7 @@ def register():
     expense_raw = subprocess.check_output(["ledger", "-f",
                                            ledgerfile, "register"] +
                                           input_param.split(' '))
-    expense_processed = process_reg(expense_raw.decode("utf-8"))
+    expense_processed = parse_register(expense_raw.decode("utf-8"))
     return json.dumps(expense_processed, indent=4)
 
 if __name__ == "__main__":
