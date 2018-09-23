@@ -31,7 +31,7 @@ def parse_balance(input):
 ...         $5.00    A1B1
 ...         $5.00    A1B2'''
 >>> parse_balance(test_input)
-[{'amounts': [{'currency': '$', 'amount': 10.0}], 'account': 'A1', 'children': [{'amounts': [{'currency': '$', 'amount': 5.0}], 'account': 'A1B1', 'children': []}, {'amounts': [{'currency': '$', 'amount': 5.0}], 'account': 'A1B2', 'children': []}]}]
+[{'amounts': [{'currency': '$', 'value': 10.0}], 'account': 'A1', 'children': [{'amounts': [{'currency': '$', 'value': 5.0}], 'account': 'A1B1', 'children': []}, {'amounts': [{'currency': '$', 'value': 5.0}], 'account': 'A1B2', 'children': []}]}]
 """
     input = input.strip().split('\n')
     parsed_tree = [] # parsed_tree: [{'amounts':[], 'account': '', 'children: [parsed_tree]}]
@@ -90,41 +90,68 @@ bal_parse_amount_re = re.compile("([aA-zZ$]+) ?(-?\d+.\d\d)")
 def parse_amount(line):
     """Return amount along with currency
 >>> parse_amount("     $10.25  A1   ")
-{'currency': '$', 'amount': 10.25}
+{'currency': '$', 'value': 10.25}
 
 >>> parse_amount("     $10.25   ")
-{'currency': '$', 'amount': 10.25}
+{'currency': '$', 'value': 10.25}
 
 >>> parse_amount("     $-10.25  A1   ")
-{'currency': '$', 'amount': -10.25}
+{'currency': '$', 'value': -10.25}
     """
     parsed_amount = bal_parse_amount_re.findall(line)
     if len(parsed_amount) > 0:
         currency, amount = parsed_amount[0]
-        return {"currency": currency, "amount": float(amount)}
+        return {"currency": currency, "value": float(amount)}
     else:
-        return {"currency": "", "amount": 0.00}
+        return {"currency": "", "value": 0.00}
 
 splitre = re.compile('  +') # split based on at least 2 spaces
 def parse_register(input):
     """Parses the output of command `ledger register` and returns json
+>>> import datetime
 >>> test_input = '''
 ... 20-Jan-01 Payee1  A1:B2:C1     $10.00     $10.00
 ...                   A1:B2:C2  INR 10.00     $10.00
 ...                                        INR 10.00
 ...                   A1:B2:C3     $10.00     $20.00
 ...                                        INR 10.00
-...                   A1:B3        $02.00     $32.00
+...                   A1:B3        $02.00     $22.00
 ...                                        INR 10.00'''
->>> parse_register(test_input)
-[{'duration': {'payee': 'Payee1', 'from': datetime.datetime(2020, 1, 1, 0, 0)}, 'accounts': [{'account': 'A1:B2:C3', 'current': {'$':10}, 'running':{'$': 10}}, {'account': 'A1:B2:C4', 'current': {'$': 10}, 'running':{'$':20}}, {'account':'A1:B3', current:{'$':2.0}, 'running':{'$': 32.0}}]}]"""
+>>> expected_parsed_input = [{
+...    'duration': {'payee': 'Payee1', 'from': datetime.datetime(2020, 1, 1, 0, 0)},
+...    'accounts': [{
+...      'account': 'A1:B2:C1',
+...      'current': [{'currency': '$', 'value': 10.0}],
+...      'running': [{'currency': '$', 'value': 10.0}]
+...    },{
+...      'account': 'A1:B2:C2',
+...      'current': [{'currency': 'INR', 'value': 10.0}],
+...      'running': [{'currency': 'INR', 'value': 10.0}, {'currency': '$', 'value': 10.0}]
+...    }, {
+...      'account': 'A1:B2:C3',
+...      'current': [{'currency': '$', 'value': 10.0}],
+...      'running': [{'currency': 'INR', 'value': 10.0}, {'currency': '$', 'value': 20.0}]
+...    }, {
+...      'account': 'A1:B3',
+...      'current': [{'currency': '$', 'value': 02.0}],
+...      'running': [{'currency': 'INR', 'value': 10.0}, {'currency': '$', 'value': 22.0}]
+...    }]
+... }]
+>>> parsed_input = parse_register(test_input)
+>>> len(parsed_input)
+1
+>>> len(parsed_input[0]['accounts'])
+4
+>>> parsed_input[0]['accounts'][-1]['running']
+[{'currency': '$', 'value': 22.0}, {'currency': 'INR', 'value': 10.0}]
+    """
     # returns duration accounts tree list
     # [{
     #     'duration' : '<duration>',
     #     'accounts' : [{
     #       'account': '<account>',
-    #       'current': { '<unit>': 'value' },
-    #       'running': { '<unit>': 'value' }
+    #       'current': [{ '<unit>': 'value' }],
+    #       'running': [{ '<unit>': 'value' }]
     #     }]
     # }]
     input = input.strip().split('\n')
@@ -137,21 +164,21 @@ def parse_register(input):
             last_account = parsed_list[-1]['accounts'][-1]
             # extra amount row in cumulative sum column
             running = parse_amount(fields[0])
-            result_running = add_currency(last_account['running'], running)
+            result_running = add_to_amount(last_account['running'], running)
             parsed_list[-1]['accounts'][-1]['running'] = result_running
         elif len(fields) == 2:
             last_account = parsed_list[-1]['accounts'][-1]
             # extra amount row
             current = parse_amount(fields[0])
             running = parse_amount(fields[1])
-            result_current = add_currency(last_account['current'], current)
-            result_running = add_currency(last_account['running'], running)
+            result_current = add_to_amount(last_account['current'], current)
+            result_running = add_to_amount(last_account['running'], running)
             parsed_list[-1]['accounts'][-1]['current'] = result_current
             parsed_list[-1]['accounts'][-1]['running'] = result_running
         elif len(fields) == 3:
             account = fields[0]
-            current = parse_amount(fields[1])
-            running = parse_amount(fields[2])
+            current = [parse_amount(fields[1])]
+            running = [parse_amount(fields[2])]
             parsed_list[-1]['accounts'].append({
                 'account' : account,
                 'current' : current,
@@ -159,8 +186,8 @@ def parse_register(input):
         elif len(fields) == 4:
             duration = parse_duration(fields[0])
             account = fields[1]
-            current = parse_amount(fields[2])
-            running = parse_amount(fields[3])
+            current = [parse_amount(fields[2])]
+            running = [parse_amount(fields[3])]
             parsed_list.append({
                 'duration' : duration,
                 'accounts' : [{
@@ -174,18 +201,22 @@ def parse_register(input):
     return parsed_list
 
 # TODO: fix this
-def add_currency(store, input):
+def add_to_amount(amount, new_entry):
     """adds to existing currency or creates new
->>> add_currency({'$': 100}, {'currency': '$', 'amount': 10})
-{'$': 110}
->>> add_currency({'$': 100}, {'currency': 'INR', 'amount': 10})
-{'$': 100, 'INR': 10}
+>>> add_to_amount([{'currency': '$', 'value': 100}], {'currency': '$', 'value': 10})
+[{'currency': '$', 'value': 110}]
+>>> add_to_amount([{'currency': '$', 'value': 100}], {'currency': 'INR', 'value': 10})
+[{'currency': '$', 'value': 100}, {'currency': 'INR', 'value': 10}]
     """
-    if input['currency'] in store:
-        store[input['currency']] = store[input['currency']] + input['amount']
-    else:
-        store[input['currency']] = input['amount']
-    return store
+    result_amount = amount[:]
+    found_new_entry_currency = False
+    for amount_entry in result_amount:
+        if new_entry['currency'] == amount_entry['currency']:
+            amount_entry['value'] = amount_entry['value'] + new_entry['value']
+            found_new_entry_currency = True
+    if not found_new_entry_currency:
+        result_amount.append(new_entry)
+    return result_amount
 
 def parse_duration(input):
     """ returns [from-date - to-date] or [date - payee]

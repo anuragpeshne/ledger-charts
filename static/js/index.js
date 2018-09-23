@@ -39,7 +39,7 @@ function uniformAmount(data) {
     return data.map(function(element) {
         var primaryCurrencyAmount = element["amounts"].reduce(function(acc, amountObj) {
             if (amountObj["currency"] == PRIM_CURRENCY) {
-                return acc + amountObj['amount'];
+                return acc + amountObj['value'];
             } else {
                 return acc;
             }
@@ -47,7 +47,7 @@ function uniformAmount(data) {
 
         var otherCurrencyAmount = element["amounts"].reduce(function(acc, amountObj){
             if (amountObj["currency"] != PRIM_CURRENCY) {
-                return acc + convertCurrency(amountObj["amount"],
+                return acc + convertCurrency(amountObj["value"],
                                               amountObj["currency"],
                                               PRIM_CURRENCY);
             } else {
