@@ -37,29 +37,32 @@ function flattenList(data, depth) {
 
 function uniformAmount(data) {
     return data.map(function(element) {
-        var primaryCurrencyAmount = element["amounts"].reduce(function(acc, amountObj) {
-            if (amountObj["currency"] == PRIM_CURRENCY) {
-                return acc + amountObj['value'];
-            } else {
-                return acc;
-            }
-        }, 0);
-
-        var otherCurrencyAmount = element["amounts"].reduce(function(acc, amountObj){
-            if (amountObj["currency"] != PRIM_CURRENCY) {
-                return acc + convertCurrency(amountObj["value"],
-                                              amountObj["currency"],
-                                              PRIM_CURRENCY);
-            } else {
-                return acc;
-            }
-        }, 0);
-
         return {
-            'amount': primaryCurrencyAmount + otherCurrencyAmount,
+            'amount': convertToPrimaryCurrency(element['amounts']),
             'label': element["account"]
         };
     });
+}
+
+function convertToPrimaryCurrency(amounts) {
+    var primaryCurrencyAmount = amounts.reduce(function(acc, amountObj) {
+        if (amountObj["currency"] == PRIM_CURRENCY) {
+            return acc + amountObj['value'];
+        } else {
+            return acc;
+        }
+    }, 0);
+
+    var otherCurrencyAmount = amounts.reduce(function(acc, amountObj){
+        if (amountObj["currency"] != PRIM_CURRENCY) {
+            return acc + convertCurrency(amountObj["value"],
+                                         amountObj["currency"],
+                                         PRIM_CURRENCY);
+        } else {
+            return acc;
+        }
+    }, 0);
+    return primaryCurrencyAmount + otherCurrencyAmount;
 }
 
 function convertCurrency(amount, sourceCurrency, targetCurrency) {
@@ -118,6 +121,68 @@ function refreshPie() {
     });
 }
 
+function addAccountField(event) {
+    var addAccountBtn = $(event.target);
+    $("<div class=\"input-line\">" +
+      "<span class=\"command\">account: " +
+      "<input type=\"text\" class=\"command account-type\"/>" +
+      "</span>" +
+      "</div>").insertBefore(addAccountBtn);
+}
+
+// takes [{ accounts: [], duration: []}]
+// gives [{ sum: 0.0, running-sum: 0.0, time-label: ''}]
+function squashRegisterAccounts(parsedRegister) {
+    return parsedRegister.map(function(registerEntry) {
+        var sum = registerEntry['accounts'].reduce(function(accSum, account) {
+            var primaryCurrencyValue = convertToPrimaryCurrency(account['current']);
+            accSum += primaryCurrencyValue;
+            return accSum;
+        }, 0);
+        var runningSum = convertToPrimaryCurrency(
+            getLastElementOfArray(registerEntry['accounts'])['running']);
+        var from = registerEntry['duration']['from'];
+        return {
+            'sum' : sum,
+            'running-sum': runningSum,
+            'time-label': from
+        };
+    });
+}
+
+function getLastElementOfArray(arr) {
+    return arr[arr.length - 1];
+}
+
+function plotLine(data, sumType) {
+    var squashedData = squashRegisterAccounts(data);
+    var plotData = squashedData.map(function(squashedEntry) {
+        return squashedEntry[sumType];
+    });
+    var labels = squashedData.map(function(squashedEntry) {
+        return squashedEntry['time-label'];
+    });
+
+    console.log(data, squashedData, sumType);
+}
+
+function refreshLine() {
+    var groupBy = $('#group-by').val();
+    var sumType = $('input[name=sum-type]:checked').val();
+    $('.account-input').each(function(index) {
+        var accountName = $(this).val();
+        var ledgerParam = [groupBy, accountName].join(' ');
+        $.ajax({
+            url: "/register",
+            method: 'GET',
+            data: { param: ledgerParam }
+        }).done(function(data) {
+            var jsonData = JSON.parse(data);
+            plotLine(jsonData, sumType);
+        });
+    });
+}
+
 $(document).ready(function() {
     (function plotMonthlyBal() {
         var today = new Date();
@@ -128,4 +193,8 @@ $(document).ready(function() {
     })();
 
     $('.pie-input').change(function(event){ refreshPie(); });
+
+    $('#add-linechart-account').click(function(event) { addAccountField(event); });
+    $('.account-input').change(function(event) { refreshLine(); });
+    $('#groupBy').change(function(event) { refreshLine(); });
 });

@@ -13,16 +13,33 @@
   <title>Ledger-cli GUI</title>
 </head>
 <body>
-    <div class="pie-container">
+    <div class="chart-container">
         <div class="input-container">
-            <div>
+            <div class="input-line" >
                 <span class="command">ledger balance <input type="text" class="command pie-input" id="pie-command" /></span>
             </div>
             <div>
                 <span>Depth: <input type="number" class="command pie-input" id="pie-depth" value="2"/></span>
             </div>
         </div>
-      <canvas id="pie-canvas" width="400px" height="400px">
-  </div>
-  </canvas>
+        <canvas id="pie-canvas" width="400px" height="400px"></canvas>
+    </div>
+    <div id="line-chart-container" class="chart-container">
+        <div class="input-container">
+            <input type="radio" name="sum-type" value="sum" id="radio-sum" checked /><label for="radio-sum">Sum</label>
+            <input type="radio" name="sum-type" value="running-sum" id="radio-running-sum" /><label for="radio-running-sum" >Running Sum</label>
+            <select id="group-by">
+                <option>--daily</option>
+                <option>--weekly</option>
+                <option selected>--monthly</option>
+                <option>--quaterly</option>
+                <option>--yearly</option>
+            </select>
+            <div class="input-line">
+                <span class="command">account: <input type="text" class="command account-input" /></span>
+            </div>
+            <button id="add-linechart-account">+</button>
+        </div>
+        <canvas id="line-canvas" width="400px" height="400px"></canvas>
+    </div>
 </body>

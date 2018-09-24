@@ -1,5 +1,4 @@
 import re
-from datetime import datetime
 
 def parse_balance(input):
     """Return parsed ledger input
@@ -108,7 +107,6 @@ def parse_amount(line):
 splitre = re.compile('  +') # split based on at least 2 spaces
 def parse_register(input):
     """Parses the output of command `ledger register` and returns json
->>> import datetime
 >>> test_input = '''
 ... 20-Jan-01 Payee1  A1:B2:C1     $10.00     $10.00
 ...                   A1:B2:C2  INR 10.00     $10.00
@@ -118,7 +116,7 @@ def parse_register(input):
 ...                   A1:B3        $02.00     $22.00
 ...                                        INR 10.00'''
 >>> expected_parsed_input = [{
-...    'duration': {'payee': 'Payee1', 'from': datetime.datetime(2020, 1, 1, 0, 0)},
+...    'duration': {'payee': 'Payee1', 'from': '20-Jan-01'},
 ...    'accounts': [{
 ...      'account': 'A1:B2:C1',
 ...      'current': [{'currency': '$', 'value': 10.0}],
@@ -221,22 +219,22 @@ def add_to_amount(amount, new_entry):
 def parse_duration(input):
     """ returns [from-date - to-date] or [date - payee]
 >>> parse_duration('18-May-01 - 18-May-31')
-{'to': datetime.datetime(2018, 5, 31, 0, 0), 'from': datetime.datetime(2018, 5, 1, 0, 0)}
+{'to': '18-May-31', 'from': '18-May-01'}
 >>> parse_duration('18-May-01 A1B1')
-{'payee': 'A1B1', 'from': datetime.datetime(2018, 5, 1, 0, 0)}
+{'payee': 'A1B1', 'from': '18-May-01'}
     """
     if ' - ' in input:
         # duration format
         from_, to = input.split(' - ')
         return {
-            'from': datetime.strptime(from_, '%y-%b-%d'),
-            'to': datetime.strptime(to, '%y-%b-%d')
+            'from': from_,
+            'to': to
         }
     else:
         # date payee format
         from_, payee = input.split(' ')
         return {
-            'from': datetime.strptime(from_, '%y-%b-%d'),
+            'from': from_,
             'payee': payee
         }
 
