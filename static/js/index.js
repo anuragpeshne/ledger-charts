@@ -4,6 +4,7 @@ const DELIM = '/';
 const PRIM_CURRENCY = '$';
 
 var pieChart = null;
+var lineChart = null;
 
 var goodColors = ['#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236', '#166a8f',
 		              '#00a950', '#58595b', '#8549ba',
@@ -154,7 +155,7 @@ function getLastElementOfArray(arr) {
     return arr[arr.length - 1];
 }
 
-function plotLine(data, sumType) {
+function plotLine(data, sumType, accountName) {
     var squashedData = squashRegisterAccounts(data);
     var plotData = squashedData.map(function(squashedEntry) {
         return squashedEntry[sumType];
@@ -164,6 +165,23 @@ function plotLine(data, sumType) {
     });
 
     console.log(data, squashedData, sumType);
+    var lineCanvas = document.getElementById('line-canvas');
+    var ctx = lineCanvas.getContext('2d');
+    if (lineChart != null) {
+        // TODO: change to add()
+        lineChart.destroy();
+    }
+    lineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            'labels': labels,
+            'datasets': [{
+                label: accountName,
+                data: plotData,
+                borderColor: goodColors[0],
+                backgroundColor: 'rgba(0, 0, 0, 0)'}]
+        }
+    });
 }
 
 function refreshLine() {
@@ -178,7 +196,7 @@ function refreshLine() {
             data: { param: ledgerParam }
         }).done(function(data) {
             var jsonData = JSON.parse(data);
-            plotLine(jsonData, sumType);
+            plotLine(jsonData, sumType, accountName);
         });
     });
 }
