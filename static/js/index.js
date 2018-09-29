@@ -71,7 +71,8 @@ function convertCurrency(amount, sourceCurrency, targetCurrency) {
     if (sourceCurrency == 'INR' && targetCurrency == '$') {
         return amount / 70;
     } else {
-        throw "Unimplemented";
+        //throw "Unimplemented";
+        return 0;
     }
 }
 
@@ -144,8 +145,8 @@ function squashRegisterAccounts(parsedRegister) {
             getLastElementOfArray(registerEntry['accounts'])['running']);
         var from = registerEntry['duration']['from'];
         return {
-            'sum' : sum,
-            'running-sum': runningSum,
+            'sum' : Math.abs(sum),
+            'running-sum': Math.abs(runningSum),
             'time-label': from
         };
     });
@@ -213,6 +214,5 @@ $(document).ready(function() {
     $('.pie-input').change(function(event){ refreshPie(); });
 
     $('#add-linechart-account').click(function(event) { addAccountField(event); });
-    $('.account-input').change(function(event) { refreshLine(); });
-    $('#groupBy').change(function(event) { refreshLine(); });
+    $('.line-input').change(function(event) { refreshLine(); });
 });

@@ -1,9 +1,16 @@
 body {
     max-width: 800px;
+    min-width: 400px;
     margin: 0 auto;
 }
 
 .chart-container {
+    max-width: 1000px;
+    min-width: 400px;
+    margin: 0 auto;
+}
+
+.pie-container {
     max-width: 600px;
     margin: 0 auto;
 }
@@ -17,8 +24,9 @@ body {
     border: none;
 }
 
-.chart-container #pie-command {
+.chart-container .input-command {
     border: none;
+    border-bottom: 2px solid #4dc9f6;
     width: 400px;
 }
 
