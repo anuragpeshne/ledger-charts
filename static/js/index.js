@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 
 const DELIM = '/';
 const PRIM_CURRENCY = '$';
@@ -82,32 +82,42 @@ function plotPie(data, depth) {
     var pieCanvas = document.getElementById('pie-canvas');
     var ctx = pieCanvas.getContext('2d');
     if (pieChart != null) {
-        pieChart.destroy();
-    }
-    pieChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            datasets: [{
-                data: filteredData.map(function(element) {return element['amount'];}),
-                backgroundColor: goodColors.slice(0, filteredData.length)
-            }],
-            labels: filteredData.map(function(element) {return element['label'];})
-        },
-        options: {
-            onClick: function(event) {
-                var clickedPoint = pieChart.getElementsAtEvent(event)[0];
+        // delete old data
+        pieChart.data.labels = [];
+        pieChart.data.datasets.pop();
+        // add new data
+        pieChart.data.labels = filteredData.map(function(element) {return element['label'];});
+        pieChart.data.datasets.push({
+            data: filteredData.map(function(element) {return element['amount'];}),
+            backgroundColor: goodColors.slice(0, filteredData.length)
+        });
+        pieChart.update();
+    } else {
+        pieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                datasets: [{
+                    data: filteredData.map(function(element) {return element['amount'];}),
+                    backgroundColor: goodColors.slice(0, filteredData.length)
+                }],
+                labels: filteredData.map(function(element) {return element['label'];})
+            },
+            options: {
+                onClick: function(event) {
+                    var clickedPoint = pieChart.getElementsAtEvent(event)[0];
 
-                if (clickedPoint) {
-                    var label = pieChart.data.labels[clickedPoint._index];
-                    var value = pieChart.data.datasets[clickedPoint._datasetIndex].data[clickedPoint._index];
-                    var account = label.substring(1).replace('/',':');
-                    var newCommand = $('#pie-command').val().trim() + ' ' + account;
-                    $('#pie-command').val(newCommand);
-                    refreshPie();
+                    if (clickedPoint) {
+                        var label = pieChart.data.labels[clickedPoint._index];
+                        var value = pieChart.data.datasets[clickedPoint._datasetIndex].data[clickedPoint._index];
+                        var account = label.substring(1).replace(/\//g,':'); // replace all '/' with ':'
+                        var newCommand = $('#pie-command').val().trim() + ' ' + account;
+                        $('#pie-command').val(newCommand);
+                        refreshPie();
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 }
 
 function refreshPie() {
@@ -127,7 +137,7 @@ function addAccountField(event) {
     var addAccountBtn = $(event.target);
     $("<div class=\"input-line\">" +
       "<span class=\"command\">account: " +
-      "<input type=\"text\" class=\"command account-type\"/>" +
+      "<input type=\"text\" class=\"command account-type input-command line-input\"/>" +
       "</span>" +
       "</div>").insertBefore(addAccountBtn);
 }
