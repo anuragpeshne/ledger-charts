@@ -85,7 +85,7 @@ def parse_account(line):
     else:
         return {'level': 0, 'account': ''}
 
-bal_parse_amount_re = re.compile("([aA-zZ$]+) ?(-?\d+.\d\d)")
+bal_parse_amount_re = re.compile("([aA-zZ$]+) ?(-?[,\d]+.\d\d)")
 def parse_amount(line):
     """Return amount along with currency
 >>> parse_amount("     $10.25  A1   ")
@@ -96,10 +96,14 @@ def parse_amount(line):
 
 >>> parse_amount("     $-10.25  A1   ")
 {'currency': '$', 'value': -10.25}
+
+>>> parse_amount("     $1,000.00  A1  ")
+{'currency': '$', 'value': 1000.0}
     """
     parsed_amount = bal_parse_amount_re.findall(line)
     if len(parsed_amount) > 0:
         currency, amount = parsed_amount[0]
+        amount = amount.replace(',', '')
         return {"currency": currency, "value": float(amount)}
     else:
         return {"currency": "", "value": 0.00}
