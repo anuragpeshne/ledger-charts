@@ -1,2 +1,2 @@
-# ledger-cli-gui
-gui for ledger-cli
+# ledger-charts
+Charts for ledger-cli
