@@ -137,7 +137,7 @@ function addAccountField(event) {
     var addAccountBtn = $(event.target);
     $("<div class=\"input-line\">" +
       "<span class=\"command\">account: " +
-      "<input type=\"text\" class=\"command account-type input-command line-input\"/>" +
+      "<input type=\"text\" class=\"command account-input input-command line-input\"/>" +
       "</span>" +
       "</div>").insertBefore(addAccountBtn);
 }
@@ -166,7 +166,7 @@ function getLastElementOfArray(arr) {
     return arr[arr.length - 1];
 }
 
-function plotLine(data, sumType, accountName) {
+function plotLine(data, sumType, accountName, accountIndex) {
     var squashedData = squashRegisterAccounts(data);
     var plotData = squashedData.map(function(squashedEntry) {
         return squashedEntry[sumType];
@@ -179,37 +179,62 @@ function plotLine(data, sumType, accountName) {
     var lineCanvas = document.getElementById('line-canvas');
     var ctx = lineCanvas.getContext('2d');
     if (lineChart != null) {
-        // TODO: change to add()
-        lineChart.destroy();
-    }
-    lineChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            'labels': labels,
-            'datasets': [{
-                label: accountName,
-                data: plotData,
-                borderColor: goodColors[0],
-                backgroundColor: 'rgba(0, 0, 0, 0)'}]
+        if(lineChart.data.datasets.length <= accountIndex) {
+            lineChart.data.datasets.push({
+                label: '',
+                data: [],
+                borderColor: goodColors[accountIndex],
+                backgroundColor: 'rgba(0, 0, 0, 0)'
+            });
         }
+        lineChart.data.datasets[accountIndex].label = accountName;
+        lineChart.data.datasets[accountIndex].data = plotData;
+        lineChart.update();
+    } else {
+        lineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                'labels': labels,
+                'datasets': [{
+                    label: accountName,
+                    data: plotData,
+                    borderColor: goodColors[accountIndex],
+                    backgroundColor: 'rgba(0, 0, 0, 0)'}]
+            }
+        });
+    }
+}
+
+function getRegisterData(groupBy, sumType, accountName, callback) {
+    var ledgerParam = [groupBy, accountName].join(' ');
+    $.ajax({
+        url: "/register",
+        method: 'GET',
+        data: { param: ledgerParam }
+    }).done(function(data) {
+        var jsonData = JSON.parse(data);
+        callback(jsonData);
     });
 }
 
-function refreshLine() {
+function refreshLine(target) {
     var groupBy = $('#group-by').val();
     var sumType = $('input[name=sum-type]:checked').val();
-    $('.account-input').each(function(index) {
-        var accountName = $(this).val();
-        var ledgerParam = [groupBy, accountName].join(' ');
-        $.ajax({
-            url: "/register",
-            method: 'GET',
-            data: { param: ledgerParam }
-        }).done(function(data) {
-            var jsonData = JSON.parse(data);
-            plotLine(jsonData, sumType, accountName);
+    if ($(target).hasClass('account-input')) {
+        var targetIndex = $(target.parentElement.parentElement).index();
+        var accountName = $(target).val();
+        getRegisterData(groupBy, sumType, accountName, function(regData) {
+            plotLine(regData, sumType, accountName, targetIndex);
         });
-    });
+    } else {
+        $('input.account-input').each(function (index, element) {
+            var targetIndex = index;
+            var accountName = $(element).val();
+            getRegisterData(groupBy, sumType, accountName, function(regData) {
+                plotLine(regData, sumType, accountName, targetIndex);
+            });
+        });
+    }
 }
 
 $(document).ready(function() {
@@ -224,5 +249,5 @@ $(document).ready(function() {
     $('.pie-input').change(function(event){ refreshPie(); });
 
     $('#add-linechart-account').click(function(event) { addAccountField(event); });
-    $('.line-input').change(function(event) { refreshLine(); });
+    $('div.input-container').on('change', '.line-input', function(event) { refreshLine(event.target); });
 });

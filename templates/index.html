@@ -32,13 +32,15 @@
                 <option>--daily</option>
                 <option>--weekly</option>
                 <option selected>--monthly</option>
-                <option>--quaterly</option>
+                <option>--quarterly</option>
                 <option>--yearly</option>
             </select>
-            <div class="input-line">
-                <span class="command">account: <input type="text" class="command account-input input-command line-input" /></span>
+            <div class="accounts-input-container">
+                <div class="input-line">
+                    <span class="command">account: <input type="text" class="command account-input input-command line-input" /></span>
+                </div>
+                <button id="add-linechart-account">+</button>
             </div>
-            <button id="add-linechart-account">+</button>
         </div>
         <canvas id="line-canvas" width="400px" height="400px"></canvas>
     </div>
