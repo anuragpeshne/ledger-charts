@@ -1,0 +1,7 @@
+{
+ :output-dir "static/js/out",
+ :main ledger-charts.core,
+ :output-to "static/js/out/main.js",
+ :asset-path "static/js/out"
+ :aot-cache true
+ }
