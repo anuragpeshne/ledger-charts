@@ -62,7 +62,7 @@ def parse_balance(input):
             current_amounts = []
     return parsed_tree
 
-bal_parse_account_re = re.compile("[aA-zZ$]+ ?-?\d+.\d\d( +)([\w\-:]*( [\w\-:]+)?)")
+bal_parse_account_re = re.compile("[aA-zZ$]+ ?-?[\d,]+.\d\d( +)([\w\-:]*( [\w\-:]+)?)")
 def parse_account(line):
     """Return account and level and handle empty account
 >>> parse_account("     $10.25  A1   ")
@@ -75,6 +75,9 @@ def parse_account(line):
 {'account': 'A1A2', 'level': 2}
 
 >>> parse_account("    $10.11      A1 A1   ")
+{'account': 'A1 A1', 'level': 3}
+
+>>> parse_account("    $1,000.11      A1 A1   ")
 {'account': 'A1 A1', 'level': 3}
     """
     parsed_account = bal_parse_account_re.findall(line)

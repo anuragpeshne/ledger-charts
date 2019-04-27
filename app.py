@@ -35,6 +35,9 @@ def register():
     return json.dumps(expense_processed, indent=4)
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python app.py <ledgerfile location>")
+        exit(1)
     ledgerfile = sys.argv[1]
     print("Using ledger file: ", ledgerfile)
     app.run()
