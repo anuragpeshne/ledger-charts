@@ -5,7 +5,6 @@ const PRIM_CURRENCY = '$';
 
 var pieChart = null;
 var lineChart = null;
-
 var goodColors = ['#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236', '#166a8f',
 		              '#00a950', '#58595b', '#8549ba',
                   '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4',
@@ -13,241 +12,168 @@ var goodColors = ['#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236', '#166a8
                   '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1',
                   '#000075', '#808080', '#ffffff', '#000000'];
 
-// takes in {amounts, accounts, children:[]} gives back {amounts, account}
-function flattenList(data, depth) {
-    function flattenListPrivate(data, depth, currentDepth, prefix) {
-        return data.reduce(function(accFlattenedObj, childObj) {
-            if (childObj.children.length == 0 || currentDepth == depth) {
-                accFlattenedObj.push({
-                    'amounts': childObj['amounts'],
-                    'account': prefix + DELIM + childObj['account']
-                });
-            } else {
-                accFlattenedObj = accFlattenedObj.concat(
-                        flattenListPrivate(
-                            childObj.children,
-                            depth,
-                            currentDepth + 1,
-                            prefix + DELIM + childObj['account']));
-            }
-            return accFlattenedObj;
-        }, []);
+function collapseAccounts(data, depth) {
+  var collapsedData = {};
+  for (var i = 0; i < data.length; i++) {
+    var accounts = data[i].account.split(':');
+    var key = accounts.slice(0, depth).join(':');
+    if (!(key in collapsedData)) {
+      collapsedData[key] = [];
     }
-    return flattenListPrivate(data, depth, 1, '');
-}
-
-function uniformAmount(data) {
-    return data.map(function(element) {
-        return {
-            'amount': convertToPrimaryCurrency(element['amounts']),
-            'label': element["account"]
-        };
+    collapsedData[key] = addAmountList(collapsedData[key], data[i].amount);
+  }
+  var collapsedList = [];
+  for (var key in collapsedData) {
+    collapsedList.push({
+      "amount": collapsedData[key],
+      "account": key
     });
-}
-
-function convertToPrimaryCurrency(amounts) {
-    var primaryCurrencyAmount = amounts.reduce(function(acc, amountObj) {
-        if (amountObj["currency"] == PRIM_CURRENCY) {
-            return acc + amountObj['value'];
-        } else {
-            return acc;
-        }
-    }, 0);
-
-    var otherCurrencyAmount = amounts.reduce(function(acc, amountObj){
-        if (amountObj["currency"] != PRIM_CURRENCY) {
-            return acc + convertCurrency(amountObj["value"],
-                                         amountObj["currency"],
-                                         PRIM_CURRENCY);
-        } else {
-            return acc;
-        }
-    }, 0);
-    return primaryCurrencyAmount + otherCurrencyAmount;
-}
-
-function convertCurrency(amount, sourceCurrency, targetCurrency) {
-    // TODO: have better logic
-    if (sourceCurrency == 'INR' && targetCurrency == '$') {
-        return amount / 70;
-    } else {
-        //throw "Unimplemented";
-        return 0;
-    }
+  }
+  return collapsedList;
 }
 
 function plotPie(data, depth) {
-    var flattenedList = flattenList(data, depth);
-    var filteredData = uniformAmount(flattenedList);
-    var pieCanvas = document.getElementById('pie-canvas');
-    var ctx = pieCanvas.getContext('2d');
-    if (pieChart != null) {
-        // delete old data
-        pieChart.data.labels = [];
-        pieChart.data.datasets.pop();
-        // add new data
-        pieChart.data.labels = filteredData.map(function(element) {return element['label'];});
-        pieChart.data.datasets.push({
-            data: filteredData.map(function(element) {return element['amount'];}),
-            backgroundColor: goodColors.slice(0, filteredData.length)
-        });
-        pieChart.update();
-    } else {
-        pieChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                datasets: [{
-                    data: filteredData.map(function(element) {return element['amount'];}),
-                    backgroundColor: goodColors.slice(0, filteredData.length)
-                }],
-                labels: filteredData.map(function(element) {return element['label'];})
-            },
-            options: {
-                onClick: function(event) {
-                    var clickedPoint = pieChart.getElementsAtEvent(event)[0];
+  var traversal = collapseAccounts(data, depth);
+  var labels = traversal.map(function(element) { return element['account']; });
+  var dataPoints = traversal
+      .map(function(element) { return element['amount']; })
+      .map(function(amount) { return convert2primarycurrency(amount); });
 
-                    if (clickedPoint) {
-                        var label = pieChart.data.labels[clickedPoint._index];
-                        var value = pieChart.data.datasets[clickedPoint._datasetIndex].data[clickedPoint._index];
-                        var account = label.substring(1).replace(/\//g,':'); // replace all '/' with ':'
-                        var newCommand = $('#pie-command').val().trim() + ' ' + account;
-                        $('#pie-command').val(newCommand);
-                        refreshPie();
-                    }
-                }
-            }
-        });
+  var pieCanvas = document.getElementById('pie-canvas');
+  var ctx = pieCanvas.getContext('2d');
+  if (pieChart != null) pieChart.destroy();
+  pieChart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      datasets: [{
+        data: dataPoints.map((v) => { return Math.abs(v); }),
+        backgroundColor: goodColors.slice(0, dataPoints.length)
+      }],
+      labels: labels
+    },
+    options: {
+      onClick: function(event) {
+        var clickedPoint = pieChart.getElementsAtEvent(event)[0];
+
+        if (clickedPoint) {
+          var label = pieChart.data.labels[clickedPoint._index];
+          var value = pieChart.data.datasets[clickedPoint._datasetIndex].data[clickedPoint._index];
+          var account = label; // replace all '/' with ':'
+          var newCommand = $('#pie-command').val().trim() + ' ' + account;
+          $('#pie-command').val(newCommand);
+          refreshPie();
+        }
+      }
     }
+  });
 }
 
-function refreshPie() {
-    var pieCommand = $('#pie-command').val();
-    $.ajax({
-        url: "/balance",
-        method: 'GET',
-        data: { param: pieCommand }
-    }).done(function(data){
-        var jsonData = JSON.parse(data);
-        var depth = parseInt($('#pie-depth').val());
-        plotPie(jsonData, depth);
-    });
+function convert2primarycurrency(amount) {
+  var value = 0.0;
+  for (var i = 0; i < amount.length; i++) {
+    var item = amount[i];
+    if (item.commodity == "$") {
+      value += item.amount;
+    } else if (item.commodity == "INR") {
+      value += item.amount / 70; // todo
+    } else {
+      console.log("ignoring " + item.commodity + " " + item.amount);
+    }
+  }
+  var rounded = Math.round(value * 100) / 100;
+  return rounded;
 }
 
 function addAccountField(event) {
-    var addAccountBtn = $(event.target);
-    $("<div class=\"input-line\">" +
-      "<span class=\"command\">account: " +
-      "<input type=\"text\" class=\"command account-input input-command line-input\"/>" +
-      "</span>" +
-      "</div>").insertBefore(addAccountBtn);
+  var addAccountBtn = $(event.target);
+  var field = $("<div class=\"input-line\">" +
+                "<label class=\"command\">account:</label>" +
+                "<input type=\"text\" class=\"form-control command account-input input-command line-input\"/>" +
+                "</span>" +
+                "<button type=\"button\" class=\"close delete-account-btn\" aria-label=\"Close\">" +
+                "<span aria-hidden=\"true\">&times;</span>" +
+                "</button>" +
+               "</div>");
+  field.children().last().click(deleteAccountField);
+  field.insertBefore(addAccountBtn);
 }
 
-// takes [{ accounts: [], duration: []}]
-// gives [{ sum: 0.0, running-sum: 0.0, time-label: ''}]
-function squashRegisterAccounts(parsedRegister) {
-    return parsedRegister.map(function(registerEntry) {
-        var sum = registerEntry['accounts'].reduce(function(accSum, account) {
-            var primaryCurrencyValue = convertToPrimaryCurrency(account['current']);
-            accSum += primaryCurrencyValue;
-            return accSum;
-        }, 0);
-        var runningSum = convertToPrimaryCurrency(
-            getLastElementOfArray(registerEntry['accounts'])['running']);
-        var from = registerEntry['duration']['from'];
-        return {
-            'sum' : Math.abs(sum),
-            'running-sum': Math.abs(runningSum),
-            'time-label': from
-        };
-    });
+function deleteAccountField(event) {
+  event.target.parentElement.parentElement.remove();
 }
 
-function getLastElementOfArray(arr) {
-    return arr[arr.length - 1];
+function groupByDate(data) {
+  var dateMap = {};
+
 }
 
-function plotLine(data, sumType, accountName, accountIndex) {
-    var squashedData = squashRegisterAccounts(data);
-    var plotData = squashedData.map(function(squashedEntry) {
-        return squashedEntry[sumType];
-    });
-    var labels = squashedData.map(function(squashedEntry) {
-        return squashedEntry['time-label'];
-    });
+function plotLine(dataSet, accountNames, sumType) {
+  console.log(dataSet);
+  var timestepSet =
+      dataSet[0]
+      .map((entry) => { return entry.date; })
+      .reduce((set, date) => { set[date] = true; return set; }, {});
+  var timesteps = Object.keys(timestepSet);
 
-    console.log(data, squashedData, sumType);
-    var lineCanvas = document.getElementById('line-canvas');
-    var ctx = lineCanvas.getContext('2d');
-    if (lineChart != null) {
-        if(lineChart.data.datasets.length <= accountIndex) {
-            lineChart.data.datasets.push({
-                label: '',
-                data: [],
-                borderColor: goodColors[accountIndex],
-                backgroundColor: 'rgba(0, 0, 0, 0)'
-            });
-        }
-        lineChart.data.datasets[accountIndex].label = accountName;
-        lineChart.data.datasets[accountIndex].data = plotData;
-        lineChart.update();
-    } else {
-        lineChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                'labels': labels,
-                'datasets': [{
-                    label: accountName,
-                    data: plotData,
-                    borderColor: goodColors[accountIndex],
-                    backgroundColor: 'rgba(0, 0, 0, 0)'}]
+  var lineCanvas = document.getElementById('line-canvas');
+  var ctx = lineCanvas.getContext('2d');
+  if (lineChart != null) lineChart.destroy();
+  lineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      'labels': timesteps,
+      'datasets': []
+    }
+  });
+
+  for (var i = 0; i < dataSet.length; i++) {
+    var data = dataSet[i];
+    var amountDateSet =
+        data
+        .reduce(
+          (set, entry) => {
+            if (!(entry.date in set)) {
+              set[entry.date] = [];
             }
-        });
-    }
-}
-
-function getRegisterData(groupBy, sumType, accountName, callback) {
-    var ledgerParam = [groupBy, accountName].join(' ');
-    $.ajax({
-        url: "/register",
-        method: 'GET',
-        data: { param: ledgerParam }
-    }).done(function(data) {
-        var jsonData = JSON.parse(data);
-        callback(jsonData);
+            set[entry.date] = addAmountList(set[entry.date], entry[sumType]);
+            return set;
+          },
+          {});
+    var amountValues =
+        Object.values(amountDateSet)
+        .map((amount) => { return convert2primarycurrency(amount); });
+    lineChart.data.datasets.push({
+      label: accountNames[i],
+      data: amountValues.map((v) => { return Math.abs(v); }),
+      borderColor: goodColors[i],
+      backgroundColor: 'rgba(0, 0, 0, 0)'
     });
+  }
+  lineChart.update();
 }
 
-function refreshLine(target) {
-    var groupBy = $('#group-by').val();
-    var sumType = $('input[name=sum-type]:checked').val();
-    if ($(target).hasClass('account-input')) {
-        var targetIndex = $(target.parentElement.parentElement).index();
-        var accountName = $(target).val();
-        getRegisterData(groupBy, sumType, accountName, function(regData) {
-            plotLine(regData, sumType, accountName, targetIndex);
-        });
-    } else {
-        $('input.account-input').each(function (index, element) {
-            var targetIndex = index;
-            var accountName = $(element).val();
-            getRegisterData(groupBy, sumType, accountName, function(regData) {
-                plotLine(regData, sumType, accountName, targetIndex);
-            });
-        });
+
+function addAmountList(amountA, amountB) {
+  var resultAmount = copyObjList(amountA);
+  for (const [key, itemB] of Object.entries(amountB)) {
+    var found = false;
+    for (const [key, itemResult] of Object.entries(resultAmount)) {
+      if (itemB.commodity === itemResult.commodity) {
+        found = true;
+        itemResult.amount += itemB.amount;
+      }
     }
+    if (found === false) {
+      resultAmount.push(itemB);
+    }
+  }
+  return resultAmount;
 }
 
-$(document).ready(function() {
-    (function plotMonthlyBal() {
-        var today = new Date();
-        // ISO format
-        var monthFirst = today.getFullYear() + '/' + (today.getMonth() + 1) + '/' + '01';
-        $('#pie-command').val('-b ' + monthFirst);
-        refreshPie();
-    })();
-
-    $('.pie-input').change(function(event){ refreshPie(); });
-
-    $('#add-linechart-account').click(function(event) { addAccountField(event); });
-    $('div.input-container').on('change', '.line-input', function(event) { refreshLine(event.target); });
-});
+function copyObjList(input) {
+  var result = [];
+  for (var i = 0; i < input.length; i++) {
+    result.push({...input[i]});
+  }
+  return result;
+}

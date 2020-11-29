@@ -1,47 +1,135 @@
 <!doctype html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://code.jquery.com/jquery-3.3.1.min.js"
-          type="text/javascript"
-          integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
-          crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.min.js"
-          type="text/javascript"></script>
-  <link rel="stylesheet" type="text/css" href="static/css/home.css">
-  <script type="text/javascript" src="static/js/index.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-  <title>Ledger-cli GUI</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+
+  <link rel="stylesheet" type="text/css" href="static/css/home.css">
+
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="static/js/index.js"></script>
+  <script type="text/javascript">
+   $(document).ready(function() {
+       initPieDate();
+       refreshPie();
+
+       $('.pie-input').change(function(event){ refreshPie(); });
+
+       $('#add-linechart-account').click(addAccountField);
+       $('div.input-container').on('change', '.line-input', function(event) { refreshLine(); });
+   });
+
+   function initPieDate() {
+       var today = new Date();
+       // ISO format
+       var monthFirst = today.getFullYear() + '/' + (today.getMonth() + 1) + '/' + '01';
+       $('#pie-command').val('-b ' + monthFirst);
+   }
+
+   function refreshPie() {
+       var param = $('#pie-command').val();
+       var depth = $('#pie-depth').val();
+
+       getLedgerData("/balance", param)
+           .then((json) => {
+               console.log(json);
+               plotPie(json, depth);
+           });
+   }
+
+   function refreshLine() {
+       var groupBy = $('#group-by').val();
+       var sumType = $('input[name=sum-type]:checked').val();
+       var accounts = $('input.account-input').map(function(key, input) { return input.value; });
+
+       var promiseSet = [];
+       for (var i = 0; i < accounts.length; i++) {
+           var account = accounts[i];
+           var param = [groupBy, account].join(" ");
+           promiseSet.push(getLedgerData("/register", param));
+       }
+       Promise
+           .all(promiseSet)
+           .then((dataSet) => { plotLine(dataSet, accounts, sumType); });
+   }
+
+   function getLedgerData(endpoint, param) {
+       var ledgerCsvUrl = endpoint + "?" + new URLSearchParams({ param: param });
+       var getData = function(resolve, reject) {
+           fetch(ledgerCsvUrl, {method: 'GET'})
+           .then(function(response){
+               if (!response.ok) {
+                   throw new Error("HTTP error " + response.status);
+               }
+               return response.json();
+           })
+           .then(json => {
+               console.log(json);
+               resolve(json);
+           })
+           .catch(function () {
+               this.dataError = true;
+               reject();
+           });
+       }
+       return new Promise(getData);
+   }
+  </script>
+
+  <title>Ledger-cli Charts</title>
 </head>
 <body>
-    <div class="chart-container pie-container">
-        <div class="input-container">
-            <div class="input-line" >
-                <span class="command">ledger balance <input type="text" class="command pie-input input-command" id="pie-command" /></span>
-            </div>
-            <div>
-                <span>Depth: <input type="number" class="command pie-input" id="pie-depth" value="2"/></span>
-            </div>
-        </div>
-        <canvas id="pie-canvas" width="400px" height="400px"></canvas>
-    </div>
-    <div id="line-chart-container" class="chart-container line-container">
-        <div class="input-container">
-            <input type="radio" name="sum-type" class="line-input" value="sum" id="radio-sum" checked /><label for="radio-sum">Sum</label>
-            <input type="radio" name="sum-type" class="line-input" value="running-sum" id="radio-running-sum" /><label for="radio-running-sum" >Running Sum</label>
-            <select class="line-input" id="group-by">
-                <option>--daily</option>
-                <option>--weekly</option>
-                <option selected>--monthly</option>
-                <option>--quarterly</option>
-                <option>--yearly</option>
-            </select>
-            <div class="accounts-input-container">
-                <div class="input-line">
-                    <span class="command">account: <input type="text" class="command account-input input-command line-input" /></span>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.min.js"
+            type="text/javascript"></script>
+
+    <div class="container">
+        <h1>Ledger Charts</h1>
+        <div class="row">
+            <div class="chart-container pie-container col-sm">
+                <h4>Balance</h4>
+                <div class="input-container form-group">
+                    <div class="input-line" >
+                        <label class="command" for="pie-command">ledger balance </label>
+                        <input type="text" class="form-control command pie-input input-command" id="pie-command" />
+                    </div>
+                    <div class="input-line">
+                        <label for="pie-depth">Depth: </label>
+                        <input type="number" class="form-control command pie-input" id="pie-depth" value="2"/>
+                    </div>
                 </div>
-                <button id="add-linechart-account">+</button>
+                <canvas id="pie-canvas" width="400px" height="400px"></canvas>
+            </div>
+            <div id="line-chart-container" class="chart-container col-sm">
+                <h4>Register</h4>
+                <div class="input-container form-group">
+                    <div class="input-line">
+                        <label for="radio-sum">Amount</label>
+                        <input type="radio" name="sum-type" class="line-input" value="amount" id="radio-sum" checked />
+                        <label for="radio-running-sum" >Running Sum</label>
+                        <input type="radio" name="sum-type" class="line-input" value="running_sum" id="radio-running-sum" />
+                    </div>
+                    <div class="input-line">
+                        <select class="custom-select form-control" id="group-by">
+                            <option>--daily</option>
+                            <option>--weekly</option>
+                            <option selected>--monthly</option>
+                            <option>--quarterly</option>
+                            <option>--yearly</option>
+                        </select>
+                    </div>
+                    <div class="accounts-input-container">
+                        <div class="input-line">
+                            <label class="command">account: </label><input type="text" class="form-control command account-input input-command line-input" />
+                        </div>
+                        <button class="btn btn-primary" id="add-linechart-account">+</button>
+                    </div>
+                </div>
+                <canvas id="line-canvas" width="400px" height="400px"></canvas>
             </div>
         </div>
-        <canvas id="line-canvas" width="400px" height="400px"></canvas>
     </div>
 </body>

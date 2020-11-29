@@ -1,33 +1,5 @@
-body {
-    max-width: 800px;
-    min-width: 400px;
-    margin: 0 auto;
-}
-
-.chart-container {
-    max-width: 1000px;
-    min-width: 400px;
-    margin: 0 auto;
-}
-
-.pie-container {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-.input-container {
-    padding: 20px;
-}
-
-.chart-container #pie-depth {
-    width: 25px;
-    border: none;
-}
-
-.chart-container .input-command {
-    border: none;
-    border-bottom: 2px solid #4dc9f6;
-    width: 400px;
+.input-line {
+    padding: 5px;
 }
 
 .command {
